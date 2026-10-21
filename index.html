@@ -5,22 +5,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Where Is My School Bus?</title>
+
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background: #f1f5f9;
       color: #17345c;
     }
+
     header {
       background: #123b72;
       color: white;
       padding: 30px 16px;
       text-align: center;
     }
-    header h1 { font-size: 27px; margin: 0 0 10px; }
-    main { max-width: 600px; margin: 24px auto; padding: 16px; }
+
+    header h1 {
+      font-size: 27px;
+      margin: 0 0 10px;
+    }
+
+    main {
+      max-width: 600px;
+      margin: 24px auto;
+      padding: 16px;
+    }
+
     .card {
       background: white;
       border-radius: 16px;
@@ -28,6 +41,7 @@
       margin-bottom: 18px;
       box-shadow: 0 4px 14px #0000000d;
     }
+
     button {
       width: 100%;
       padding: 14px;
@@ -37,12 +51,26 @@
       background: #1769e0;
       color: white;
       font-size: 16px;
+      cursor: pointer;
     }
-    .status { color: #a15c00; font-weight: bold; }
-    #message { line-height: 1.5; }
-    footer { text-align: center; padding: 20px; color: #64748b; }
+
+    .status {
+      color: #a15c00;
+      font-weight: bold;
+    }
+
+    #message {
+      line-height: 1.5;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #64748b;
+    }
   </style>
 </head>
+
 <body>
   <header>
     <h1>🚌 Where Is My School Bus?</h1>
@@ -53,22 +81,28 @@
     <section class="card">
       <h2>Welcome!</h2>
       <p>Know where your school bus is, wherever you are.</p>
-      <p class="status">Demo version — live tracking is not connected yet.</p>
+      <p class="status" id="connectionStatus">
+        Connecting to Firebase...
+      </p>
     </section>
 
     <section class="card">
       <h2>My School Bus</h2>
-      <p>Bus number: Not assigned</p>
-      <p>Bus status: Waiting for connection</p>
-      <button onclick="showMessage('Live bus tracking will be available after GPS and Firebase setup.')">
+      <p>Bus number: <span id="busNumber">Not assigned</span></p>
+      <p>Bus status: <span id="busStatus">Waiting for connection</span></p>
+
+      <button onclick="showMessage('Live bus tracking needs driver GPS and Firebase bus data.')">
         Track My Bus
       </button>
+
       <button onclick="showMessage('Your assigned bus stop will appear after your school account is connected.')">
         My Stop
       </button>
+
       <button onclick="showMessage('Your bus route will appear after your school sets it up.')">
         View Route
       </button>
+
       <p id="message" aria-live="polite"></p>
     </section>
   </main>
@@ -80,45 +114,48 @@
       document.getElementById("message").textContent = text;
     }
   </script>
-</body
-<!-- Firebase connection -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
-  import { getAuth } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-  import { getDatabase } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-database.js";
 
-  
-const firebaseConfig = {
-  apiKey: "YOUR_EXISTING_API_KEY",
-  authDomain: "where-is-my-school-bus-6d154.firebaseapp.com",
-  databaseURL: "https://where-is-my-school-bus-6d154-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "where-is-my-school-bus-6d154",
-  storageBucket: "where-is-my-school-bus-6d154.firebasestorage.app",
-  messagingSenderId: "452187935096",
-  appId: "YOUR_EXISTING_APP_ID",
-  measurementId: "YOUR_EXISTING_MEASUREMENT_ID"
-};
-  
-    apiKey: "AIzaSyC_CN6UeqM1G7psZMLwwix26zkVmmI38kQ",
-    authDomain: "where-is-my-school-bus-6d154.firebaseapp.com",
-    databaseURL: "https://where-is-my-school-bus-6d154-default-rtdb.firebaseio.com",
-    projectId: "where-is-my-school-bus-6d154",
-    storageBucket: "where-is-my-school-bus-6d154.firebasestorage.app",
-    messagingSenderId: "452187935096",
-    appId: "1:452187935096:web:44bd88bd9571d37df1388d",
-    measurementId: "G-SK74W5SSM0"
-  };
+  <!-- Firebase connection -->
+  <script type="module">
+    import { initializeApp }
+      from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const database = getDatabase(app);
+    import { getAuth }
+      from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 
-  console.log("Firebase connected successfully!");
-</const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const database = getDatabase(app);>
+    import { getDatabase }
+      from "https://www.gstatic.com/firebasejs/12.4.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC_CN6UeqM1G7psZMLwwix26zkVmmI38kQ",
+      authDomain: "where-is-my-school-bus-6d154.firebaseapp.com",
+      databaseURL: "https://where-is-my-school-bus-6d154-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "where-is-my-school-bus-6d154",
+      storageBucket: "where-is-my-school-bus-6d154.firebasestorage.app",
+      messagingSenderId: "452187935096",
+      appId: "1:452187935096:web:44bd88bd9571d37df1388d",
+      measurementId: "G-SK74W5SSM0"
+    };
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const database = getDatabase(app);
+
+      document.getElementById("connectionStatus").textContent =
+        "Firebase initialized successfully!";
+
+      console.log("Firebase initialized", {
+        authenticationReady: !!auth,
+        databaseReady: !!database
+      });
+
+    } catch (error) {
+      document.getElementById("connectionStatus").textContent =
+        "Firebase setup error: " + error.message;
+      console.error(error);
+    }
+  </script>
 </body>
 </html>
->
-</html>
+
