@@ -1,1 +1,386 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#123b70">
+<title>Where Is My School Bus?</title>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5fb;color:#172b4d}
+header{background:#123b70;color:white;padding:22px 16px;text-align:center}
+header h1{margin:0 0 8px;font-size:26px}
+main{max-width:850px;margin:20px auto;padding:0 14px}
+.card{background:white;padding:20px;border-radius:16px;margin-bottom:16px;box-shadow:0 3px 14px #10204012}
+input,select{width:100%;padding:12px;margin:7px 0 14px;border:1px solid #ccd6e4;border-radius:8px;font-size:16px}
+button{border:0;background:#1769d2;color:white;padding:12px 15px;border-radius:9px;margin:4px 4px 4px 0;font-size:15px;cursor:pointer}
+button.secondary{background:#e5edf8;color:#17365d}
+button:disabled{opacity:.5}
+.bus{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid #e5eaf1}
+.badge{padding:7px 10px;border-radius:20px;background:#fff1c9;color:#805600;font-size:13px}
+.muted{color:#65758b;line-height:1.6}
+.hidden{display:none!important}
+.notice{padding:12px;background:#edf5ff;border-radius:9px;overflow-wrap:anywhere}
+#message{overflow-wrap:anywhere}
+footer{text-align:center;padding:20px;color:#65758b}
+</style>
+</head>
+
+<body>
+<header>
+<h1>🚌 Where Is My School Bus?</h1>
+<p>School bus information for parents and students</p>
+</header>
+
+<main>
+<section class="card" id="loginCard">
+<h2>Login / Register</h2>
+<p class="muted">Sign in using your email and password.</p>
+<label for="email">Email address</label>
+<input id="email" type="email" autocomplete="email" placeholder="Enter your email">
+<label for="password">Password</label>
+<input id="password" type="password" autocomplete="current-password" placeholder="Enter password">
+<label for="role">Your role</label>
+<select id="role">
+<option value="parent">Parent / Student</option>
+<option value="driver">Bus Driver</option>
+<option value="admin">School Admin</option>
+</select>
+<button id="loginBtn">Login</button>
+<button id="registerBtn" class="secondary">Create Account</button>
+<p class="muted">For safety, role access must be verified by the school before using driver or admin functions.</p>
+</section>
+
+<section class="card hidden" id="dashboard">
+<h2 id="welcome">Dashboard</h2>
+<p id="accountInfo" class="muted"></p>
+<button id="logoutBtn" class="secondary">Logout</button>
+</section>
+
+<section class="card hidden" id="parentPanel">
+<h2>Parent / Student Dashboard</h2>
+<label for="parentBus">Assigned bus</label>
+<select id="parentBus">
+<option>BUS-01</option><option>BUS-02</option>
+<option>BUS-03</option><option>BUS-04</option>
+<option>BUS-05</option><option>BUS-06</option>
+</select>
+<p id="parentStatus">Bus status: Loading...</p>
+<p id="parentLocation">GPS location: Not available</p>
+<p id="parentStop">Next stop: Not configured</p>
+<button id="trackBtn">Track Bus</button>
+<button id="routeBtn">View Route</button>
+<button id="stopBtn">My Stop</button>
+<button id="detailsBtn">Bus Details</button>
+<div id="parentMap" class="notice hidden"></div>
+<p id="parentMessage" class="muted"></p>
+</section>
+
+<section class="card hidden" id="driverPanel">
+<h2>Driver Dashboard</h2>
+<p class="muted">Select your assigned bus and update its status. Only authorized drivers should update bus data.</p>
+<label for="driverBus">Assigned bus</label>
+<select id="driverBus">
+<option>BUS-01</option><option>BUS-02</option>
+<option>BUS-03</option><option>BUS-04</option>
+<option>BUS-05</option><option>BUS-06</option>
+</select>
+<label for="driverStatus">Bus status</label>
+<select id="driverStatus">
+<option value="not started">Not started</option>
+<option value="on the way">On the way</option>
+<option value="at next stop">At next stop</option>
+<option value="arrived">Arrived</option>
+</select>
+<button id="updateStatusBtn">Update Bus Status</button>
+<button id="shareLocationBtn">Share My GPS Location</button>
+<p id="driverMessage" class="muted"></p>
+</section>
+
+<section class="card hidden" id="adminPanel">
+<h2>School Admin Dashboard</h2>
+<p class="muted">Manage route information for each bus.</p>
+<label for="adminBus">Bus number</label>
+<select id="adminBus">
+<option>BUS-01</option><option>BUS-02</option>
+<option>BUS-03</option><option>BUS-04</option>
+<option>BUS-05</option><option>BUS-06</option>
+</select>
+<label for="routeName">Route name</label>
+<input id="routeName" placeholder="Example: School to Main Road">
+<label for="stops">Stops (separate with commas)</label>
+<input id="stops" placeholder="Main Road, Market, School Gate">
+<button id="saveRouteBtn">Save Route</button>
+<p id="adminMessage" class="muted"></p>
+</section>
+
+<section class="card">
+<h2>Bus Status Board</h2>
+<p id="connection" class="muted">Connecting to Firebase...</p>
+<div id="busList">Loading buses...</div>
+</section>
+
+<section class="card">
+<h2>How tracking works</h2>
+<p class="muted">Bus status updates come from Firebase. Real-time GPS requires an authorized driver device, location permission, secure database rules, and an internet connection. Arrival estimates require route and location data. This website does not invent a bus location.</p>
+</section>
+</main>
+<footer>Where Is My School Bus? · School transport information</footer>
+
+<script type="module">
+import {initializeApp}
+from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+
+import {
+ getAuth, createUserWithEmailAndPassword,
+ signInWithEmailAndPassword, signOut,
+ onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+ getDatabase, ref, onValue, get, update, set
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+/* Use the configuration from your existing Firebase web app. */
+const firebaseConfig = {
+ apiKey: "YOUR_EXISTING_API_KEY",
+ authDomain: "where-is-my-school-bus-6d154.firebaseapp.com",
+ databaseURL: "https://where-is-my-school-bus-6d154-default-rtdb.asia-southeast1.firebasedatabase.app",
+ projectId: "where-is-my-school-bus-6d154"
+};
+
+const $ = id => document.getElementById(id);
+const busIds = Array.from({length:6},(_,i)=>
+ "BUS-"+String(i+1).padStart(2,"0"));
+
+let app, auth, db, currentUser = null;
+let currentRole = null;
+let busData = {};
+let roleVerified = false;
+let locationWatch = null;
+
+function message(id,text){$(id).textContent=text;}
+function show(id,yes){$(id).classList.toggle("hidden",!yes);}
+
+function safeError(error){
+ const errors = {
+  "auth/invalid-credential":"Email or password is incorrect.",
+  "auth/email-already-in-use":"This email already has an account.",
+  "auth/weak-password":"Choose a stronger password.",
+  "auth/invalid-email":"Enter a valid email address.",
+  "auth/operation-not-allowed":"Enable Email/Password in Firebase Authentication.",
+  "PERMISSION_DENIED":"Database permission denied. Check your Firebase rules."
+ };
+ return errors[error.code] || error.message || "Something went wrong.";
+}
+
+try {
+ if(firebaseConfig.apiKey==="YOUR_EXISTING_API_KEY"){
+  message("connection","Setup needed: replace YOUR_EXISTING_API_KEY with your Firebase web API key.");
+ } else {
+  app=initializeApp(firebaseConfig);
+  auth=getAuth(app);
+  db=getDatabase(app);
+  startBusListener();
+  setupAuth();
+ }
+} catch(e) {
+ message("connection","Firebase setup error: "+safeError(e));
+}
+
+function startBusListener(){
+ onValue(ref(db,"/"),snapshot=>{
+  const data=snapshot.val()||{};
+  busData=data;
+  renderBuses();
+  message("connection","Connected to Firebase. Bus data refreshed.");
+  updateParent();
+ },error=>{
+  message("connection","Firebase read error: "+safeError(error));
+ });
+}
+
+function getBusRecord(id){
+ return busData[id] || busData.buses?.[id] || {};
+}
+
+function getStatus(id){
+ const b=getBusRecord(id);
+ if(typeof b==="string") return b;
+ return b.status || "No status available";
+}
+
+function renderBuses(){
+ const list=$("busList");
+ list.replaceChildren();
+ busIds.forEach(id=>{
+  const row=document.createElement("div");
+  row.className="bus";
+  const name=document.createElement("strong");
+  name.textContent="🚌 "+id;
+  const status=document.createElement("span");
+  status.className="badge";
+  status.textContent=getStatus(id);
+  const button=document.createElement("button");
+  button.textContent="Select";
+  button.onclick=()=>{
+   $("parentBus").value=id;
+   updateParent();
+   show("parentPanel",true);
+   message("parentMessage","Selected "+id+".");
+  };
+  row.append(name,status,button);
+  list.appendChild(row);
+ });
+}
+
+function setupAuth(){
+ $("loginBtn").onclick=async()=>{
+  try{
+   await signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").value);
+  }catch(e){alert(safeError(e));}
+ };
+ $("registerBtn").onclick=async()=>{
+  try{
+   await createUserWithEmailAndPassword(auth,$("email").value.trim(),$("password").value);
+   alert("Account created. You can now sign in. Ask the school administrator to authorize your role.");
+  }catch(e){alert(safeError(e));}
+ };
+ $("logoutBtn").onclick=()=>signOut(auth);
+ onAuthStateChanged(auth,async user=>{
+  currentUser=user;
+  if(!user){
+   currentRole=null;
+   roleVerified=false;
+   show("loginCard",true);show("dashboard",false);
+   show("parentPanel",false);show("driverPanel",false);show("adminPanel",false);
+   return;
+  }
+  show("loginCard",false);show("dashboard",true);
+  message("accountInfo",user.email||"Signed in");
+  try{
+   const snap=await get(ref(db,"userRoles/"+user.uid));
+   const roleData=snap.val();
+   currentRole=roleData?.role||null;
+   roleVerified=roleData?.approved===true;
+   $("welcome").textContent="Welcome";
+   if(!roleVerified){
+    show("parentPanel",false);show("driverPanel",false);show("adminPanel",false);
+    message("accountInfo",(user.email||"Account")+" — your role must be approved by the school.");
+    return;
+   }
+   show("parentPanel",currentRole==="parent");
+   show("driverPanel",currentRole==="driver");
+   show("adminPanel",currentRole==="admin");
+   if(currentRole==="parent")updateParent();
+  }catch(e){
+   message("accountInfo","Could not verify role: "+safeError(e));
+  }
+ });
+}
+
+function updateParent(){
+ const id=$("parentBus").value;
+ const b=getBusRecord(id);
+ message("parentStatus","Bus status: "+getStatus(id));
+ const loc=b.location;
+ if(loc && Number.isFinite(Number(loc.latitude)) &&
+    Number.isFinite(Number(loc.longitude))){
+  message("parentLocation","Latest GPS: "+loc.latitude+", "+loc.longitude);
+  $("parentMap").replaceChildren();
+  const link=document.createElement("a");
+  link.href="https://www.google.com/maps?q="+encodeURIComponent(loc.latitude+","+loc.longitude);
+  link.target="_blank";
+  link.rel="noopener noreferrer";
+  link.textContent="Open bus location in Google Maps";
+  $("parentMap").appendChild(link);
+  show("parentMap",true);
+ }else{
+  message("parentLocation","GPS location: Not available yet.");
+  show("parentMap",false);
+ }
+ message("parentStop","Next stop: "+(b.nextStop||"Not configured"));
+}
+$("parentBus").onchange=updateParent;
+$("trackBtn").onclick=()=>{
+ updateParent();
+ message("parentMessage","Showing the latest location available in Firebase. A live location needs a driver's GPS sharing enabled.");
+};
+$("routeBtn").onclick=async()=>{
+ const id=$("parentBus").value;
+ try{
+  const snap=await get(ref(db,"routes/"+id));
+  const r=snap.val();
+  message("parentMessage",r?
+   "Route: "+(r.name||"Unnamed")+". Stops: "+(r.stops||"Not listed"):
+   "No route has been saved for "+id+" yet.");
+ }catch(e){message("parentMessage",safeError(e));}
+};
+$("stopBtn").onclick=()=>message("parentMessage","Your assigned stop must be added by your school.");
+$("detailsBtn").onclick=()=>message("parentMessage",$("parentBus").value+" — "+getStatus($("parentBus").value));
+
+$("updateStatusBtn").onclick=async()=>{
+ if(!currentUser||currentRole!=="driver"||!roleVerified){
+  message("driverMessage","Only a school-approved driver can update bus status.");return;
+ }
+ try{
+  const id=$("driverBus").value;
+  await update(ref(db,id),{status:$("driverStatus").value,updatedAt:Date.now()});
+  message("driverMessage","Status updated successfully.");
+ }catch(e){message("driverMessage",safeError(e));}
+};
+
+$("shareLocationBtn").onclick=()=>{
+ if(!currentUser||currentRole!=="driver"||!roleVerified){
+  message("driverMessage","Only a school-approved driver can share location.");return;
+ }
+ if(!navigator.geolocation){
+  message("driverMessage","GPS is not supported by this browser.");return;
+ }
+ if(locationWatch!==null){
+  navigator.geolocation.clearWatch(locationWatch);
+  locationWatch=null;
+  message("driverMessage","Location sharing stopped.");
+  $("shareLocationBtn").textContent="Share My GPS Location";
+  return;
+ }
+ const id=$("driverBus").value;
+ message("driverMessage","Requesting location permission...");
+ locationWatch=navigator.geolocation.watchPosition(async pos=>{
+  try{
+   await update(ref(db,id),{
+    location:{
+     latitude:pos.coords.latitude,
+     longitude:pos.coords.longitude,
+     updatedAt:Date.now()
+    }
+   });
+   message("driverMessage","Location shared. Keep this page open while driving is safely managed by the school.");
+  }catch(e){message("driverMessage",safeError(e));}
+ },err=>{
+  message("driverMessage","Location unavailable: "+err.message);
+  if(locationWatch!==null)navigator.geolocation.clearWatch(locationWatch);
+  locationWatch=null;
+ },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+ $("shareLocationBtn").textContent="Stop Sharing Location";
+};
+
+$("saveRouteBtn").onclick=async()=>{
+ if(!currentUser||currentRole!=="admin"||!roleVerified){
+  message("adminMessage","Only a school-approved administrator can save routes.");return;
+ }
+ const id=$("adminBus").value;
+ const name=$("routeName").value.trim();
+ const stops=$("stops").value.trim();
+ if(!name||!stops){message("adminMessage","Enter a route name and its stops.");return;}
+ try{
+  await set(ref(db,"routes/"+id),{name,stops,updatedAt:Date.now()});
+  message("adminMessage","Route saved for "+id+".");
+ }catch(e){message("adminMessage",safeError(e));}
+};
+</script>
+</body>
+  </html>
+
