@@ -1,1 +1,537 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#123b70">
+  <title>Where Is My School Bus?</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f1f5fb;
+      color: #172b4d;
+    }
+
+    header {
+      background: #123b70;
+      color: white;
+      padding: 22px 16px;
+      text-align: center;
+    }
+
+    header h1 { margin: 0 0 8px; font-size: 25px; }
+    header p { margin: 0; }
+
+    main {
+      width: min(950px, 94%);
+      margin: 20px auto;
+    }
+
+    .panel {
+      background: white;
+      padding: 18px;
+      margin-bottom: 18px;
+      border-radius: 14px;
+      box-shadow: 0 3px 12px #17345b12;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 6px 0;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    input, select {
+      border: 1px solid #ccd5e3;
+      background: white;
+    }
+
+    button {
+      border: none;
+      background: #1769d2;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled { opacity: 0.6; }
+
+    .secondary { background: #53677f; }
+    .bus-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .bus-card {
+      border: 1px solid #dce5f1;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .bus-card h3 { margin-top: 0; }
+
+    .status {
+      display: inline-block;
+      background: #e4f5e9;
+      color: #176536;
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+
+    .muted { color: #65758b; font-size: 14px; }
+    .message { overflow-wrap: anywhere; }
+    .hidden { display: none !important; }
+
+    footer {
+      text-align: center;
+      color: #65758b;
+      padding: 20px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>🚌 Where Is My School Bus?</h1>
+  <p>Safe journeys start here</p>
+</header>
+
+<main>
+  <section id="authPanel" class="panel">
+    <h2>Welcome!</h2>
+    <p>Log in or create an account to view bus information.</p>
+
+    <form id="authForm">
+      <input id="email" type="email"
+        placeholder="Email address" autocomplete="email" required>
+
+      <input id="password" type="password"
+        placeholder="Password (at least 6 characters)"
+        autocomplete="current-password" minlength="6" required>
+
+      <button id="loginButton" type="submit">Login</button>
+      <button id="registerButton" type="button" class="secondary">
+        Create Account
+      </button>
+    </form>
+
+    <p id="authMessage" class="message" role="status"></p>
+  </section>
+
+  <section id="appPanel" class="hidden">
+    <div class="panel">
+      <h2>Dashboard</h2>
+      <p id="accountInfo" class="message"></p>
+      <p id="roleInfo" class="message"></p>
+      <p id="connectionInfo" class="message">Connecting to Firebase…</p>
+      <button id="logoutButton" class="secondary">Logout</button>
+    </div>
+
+    <div class="panel">
+      <h2>Parent / Student Dashboard</h2>
+
+      <label for="busSelect">Select your assigned bus</label>
+      <select id="busSelect">
+        <option value="BUS-01">BUS-01</option>
+        <option value="BUS-02">BUS-02</option>
+        <option value="BUS-03">BUS-03</option>
+        <option value="BUS-04">BUS-04</option>
+        <option value="BUS-05">BUS-05</option>
+        <option value="BUS-06">BUS-06</option>
+      </select>
+
+      <p><strong>Bus status:</strong>
+        <span id="selectedStatus">Loading…</span>
+      </p>
+      <p><strong>GPS location:</strong>
+        <span id="selectedLocation">Not available yet</span>
+      </p>
+      <p><strong>Next stop:</strong>
+        <span id="selectedStop">Not configured</span>
+      </p>
+      <p><strong>Estimated arrival:</strong>
+        <span id="selectedETA">Not available</span>
+      </p>
+
+      <button id="trackButton">Track Bus</button>
+      <button id="routeButton" class="secondary">View Route</button>
+      <button id="stopButton" class="secondary">My Stop</button>
+      <button id="detailsButton" class="secondary">Bus Details</button>
+
+      <p id="detailMessage" class="message" role="status"></p>
+    </div>
+
+    <div class="panel">
+      <h2>🚌 Bus Status Board</h2>
+      <p id="boardMessage" class="message">Loading buses…</p>
+      <div id="busGrid" class="bus-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h3>About this app</h3>
+      <p class="muted">
+        Bus information comes from Firebase. Live GPS requires an
+        authorized driver's device and location permission. The school
+        must configure approved roles, routes, stops and student
+        assignments before those features can work.
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer>Where Is My School Bus? · 2026</footer>
+
+<script type="module">
+  import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    onAuthStateChanged,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+  import {
+    getDatabase,
+    ref,
+    onValue
+  } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC_CN6UeqM1G7psZMLwwix26zkVmmI38qK",
+    authDomain: "where-is-my-school-bus-6d154.firebaseapp.com",
+    databaseURL: "https://where-is-my-school-bus-6d154-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "where-is-my-school-bus-6d154",
+    storageBucket: "where-is-my-school-bus-6d154.firebasestorage.app",
+    messagingSenderId: "452187935096",
+    appId: "1:452187935096:web:44bd88bd9571d37df1388d",
+    measurementId: "G-SK74W5SSM0"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  const busIds = [
+    "BUS-01", "BUS-02", "BUS-03",
+    "BUS-04", "BUS-05", "BUS-06"
+  ];
+
+  const $ = id => document.getElementById(id);
+
+  let busData = {};
+  let routesData = {};
+  let unsubscribeData = null;
+  let unsubscribeRole = null;
+
+  function showMessage(id, message) {
+    $(id).textContent = message;
+  }
+
+  function getStatus(busId) {
+    const bus = busData[busId];
+
+    if (typeof bus === "string" && bus.trim()) {
+      return bus;
+    }
+
+    if (bus && typeof bus === "object") {
+      const key = Object.keys(bus).find(
+        k => k.toLowerCase() === "status"
+      );
+
+      if (key && bus[key] != null && String(bus[key]).trim()) {
+        return String(bus[key]).trim();
+      }
+    }
+
+    return "No status available";
+  }
+
+  function getBusValue(busId, names) {
+    const bus = busData[busId];
+
+    if (!bus || typeof bus !== "object") return "";
+
+    const key = Object.keys(bus).find(
+      k => names.includes(k.toLowerCase())
+    );
+
+    return key && bus[key] != null ? String(bus[key]) : "";
+  }
+
+  function getRouteValue(busId, names) {
+    const route = routesData[busId];
+
+    if (!route || typeof route !== "object") return "";
+
+    const key = Object.keys(route).find(
+      k => names.includes(k.toLowerCase())
+    );
+
+    const value = key ? route[key] : "";
+    return value == null ? "" : String(value);
+  }
+
+  function renderBuses() {
+    const grid = $("busGrid");
+    grid.replaceChildren();
+
+    busIds.forEach(busId => {
+      const card = document.createElement("div");
+      card.className = "bus-card";
+
+      const title = document.createElement("h3");
+      title.textContent = "🚌 " + busId;
+
+      const status = document.createElement("p");
+      status.className = "status";
+      status.textContent = getStatus(busId);
+
+      const location = document.createElement("p");
+      location.textContent =
+        "GPS: " +
+        (getBusValue(busId, ["location", "gps", "coordinates"]) ||
+          "Not available yet");
+
+      const stop = document.createElement("p");
+      stop.textContent =
+        "Next stop: " +
+        (getBusValue(busId, ["nextstop", "next_stop"]) ||
+          getRouteValue(busId, ["nextstop", "next_stop"]) ||
+          "Not configured");
+
+      const selectButton = document.createElement("button");
+      selectButton.textContent = "Select";
+      selectButton.addEventListener("click", () => {
+        $("busSelect").value = busId;
+        renderSelectedBus();
+      });
+
+      card.append(title, status, location, stop, selectButton);
+      grid.appendChild(card);
+    });
+
+    renderSelectedBus();
+  }
+
+  function renderSelectedBus() {
+    const busId = $("busSelect").value;
+
+    $("selectedStatus").textContent = getStatus(busId);
+
+    $("selectedLocation").textContent =
+      getBusValue(busId, ["location", "gps", "coordinates"]) ||
+      "Not available yet";
+
+    $("selectedStop").textContent =
+      getBusValue(busId, ["nextstop", "next_stop"]) ||
+      getRouteValue(busId, ["nextstop", "next_stop"]) ||
+      "Not configured";
+
+    $("selectedETA").textContent =
+      getBusValue(busId, ["eta", "estimatedarrival", "estimated_arrival"]) ||
+      getRouteValue(busId, ["eta", "estimatedarrival", "estimated_arrival"]) ||
+      "Not available";
+  }
+
+  function startDatabaseListeners(user) {
+    if (unsubscribeData) unsubscribeData();
+    if (unsubscribeRole) unsubscribeRole();
+
+    showMessage("connectionInfo", "Connecting to Firebase…");
+    showMessage("boardMessage", "Loading bus information…");
+
+    // Start reading the database only after Firebase confirms login.
+    unsubscribeData = onValue(
+      ref(db, "/"),
+      snapshot => {
+        const data = snapshot.val() || {};
+
+        busData = {};
+        routesData = data.routes || {};
+
+        busIds.forEach(id => {
+          if (data[id] !== undefined) {
+            busData[id] = data[id];
+          } else if (data.buses && data.buses[id] !== undefined) {
+            busData[id] = data.buses[id];
+          }
+        });
+
+        renderBuses();
+
+        showMessage(
+          "connectionInfo",
+          "Connected to Firebase. Bus information refreshed."
+        );
+
+        showMessage(
+          "boardMessage",
+          "Connected to Firebase. Bus information refreshed."
+        );
+      },
+      error => {
+        showMessage(
+          "connectionInfo",
+          "Database error: " + error.message
+        );
+
+        showMessage(
+          "boardMessage",
+          "Could not read bus data. Check Firebase rules."
+        );
+      }
+    );
+
+    unsubscribeRole = onValue(
+      ref(db, "userRoles/" + user.uid),
+      snapshot => {
+        const role = snapshot.val();
+
+        if (role && role.approved === true) {
+          showMessage(
+            "roleInfo",
+            "Approved role: " + (role.role || "User")
+          );
+        } else {
+          showMessage(
+            "roleInfo",
+            "Your school must approve your role. Parent dashboard is available for testing."
+          );
+        }
+      },
+      error => {
+        showMessage(
+          "roleInfo",
+          "Role approval could not be checked: " + error.message
+        );
+      }
+    );
+  }
+
+  $("authForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const email = $("email").value.trim();
+    const password = $("password").value;
+
+    $("loginButton").disabled = true;
+    showMessage("authMessage", "Logging in…");
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      showMessage("authMessage", "Login successful.");
+    } catch (error) {
+      showMessage("authMessage", error.message);
+    } finally {
+      $("loginButton").disabled = false;
+    }
+  });
+
+  $("registerButton").addEventListener("click", async () => {
+    const email = $("email").value.trim();
+    const password = $("password").value;
+
+    if (!email || password.length < 6) {
+      showMessage(
+        "authMessage",
+        "Enter a valid email and a password of at least 6 characters."
+      );
+      return;
+    }
+
+    $("registerButton").disabled = true;
+    showMessage("authMessage", "Creating your account…");
+
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      showMessage("authMessage", "Account created successfully.");
+    } catch (error) {
+      showMessage("authMessage", error.message);
+    } finally {
+      $("registerButton").disabled = false;
+    }
+  });
+
+  $("logoutButton").addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      showMessage("connectionInfo", error.message);
+    }
+  });
+
+  $("busSelect").addEventListener("change", renderSelectedBus);
+
+  $("trackButton").addEventListener("click", () => {
+    showMessage(
+      "detailMessage",
+      "Showing the latest saved location. Live GPS is unavailable until an authorized driver's device sends coordinates."
+    );
+  });
+
+  $("routeButton").addEventListener("click", () => {
+    const busId = $("busSelect").value;
+    const route = routesData[busId];
+
+    showMessage(
+      "detailMessage",
+      route
+        ? "Route information: " + JSON.stringify(route)
+        : "No route has been configured for " + busId + " yet."
+    );
+  });
+
+  $("stopButton").addEventListener("click", () => {
+    showMessage(
+      "detailMessage",
+      "Your school must assign your student a bus stop."
+    );
+  });
+
+  $("detailsButton").addEventListener("click", () => {
+    const busId = $("busSelect").value;
+    showMessage(
+      "detailMessage",
+      busId + " — Status: " + getStatus(busId)
+    );
+  });
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      $("authPanel").classList.add("hidden");
+      $("appPanel").classList.remove("hidden");
+      showMessage("accountInfo", user.email || "Signed in");
+      startDatabaseListeners(user);
+    } else {
+      if (unsubscribeData) unsubscribeData();
+      if (unsubscribeRole) unsubscribeRole();
+
+      unsubscribeData = null;
+      unsubscribeRole = null;
+      busData = {};
+      routesData = {};
+
+      $("appPanel").classList.add("hidden");
+      $("authPanel").classList.remove("hidden");
+      showMessage("authMessage", "Please log in to continue.");
+    }
+  });
+</script>
+</body>
+</html>
+
